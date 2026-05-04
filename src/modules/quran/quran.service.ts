@@ -110,6 +110,69 @@ export class QuranService {
     return result;
   }
 
+  /** Get ayahs by Juz (Para) */
+  async getJuzWithAyahs(
+    juzId: number,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ juz: Juz; ayahs: Ayah[] } | null> {
+    const cacheKey = `juz_${juzId}_p${page}_l${limit}`;
+    if (QuranService.cache.has(cacheKey)) {
+      return QuranService.cache.get(cacheKey);
+    }
+
+    const db = getDB();
+    const offset = (page - 1) * limit;
+
+    const ayahs = await db.all<Ayah[]>(
+      `SELECT
+        ar.SuraIDAr   AS sura_no,
+        ar.VerseIDAr  AS ayah_no,
+        ar.AyahTextAr AS arabic_text,
+        en.text       AS english_text,
+        bn.text       AS bengali_text,
+        au.audio      AS audio_url,
+        s.para        AS juz_no
+      FROM quranar ar
+      JOIN sura s ON s.sura_no = ar.SuraIDAr
+      LEFT JOIN en_yusufali en ON en.sura = ar.SuraIDAr AND en.aya = ar.VerseIDAr
+      LEFT JOIN bn_bengali  bn ON bn.sura = ar.SuraIDAr AND bn.aya = ar.VerseIDAr
+      LEFT JOIN audio       au ON au.sura_no = ar.SuraIDAr
+      WHERE s.para = ?
+      ORDER BY s.sura_no ASC, ar.VerseIDAr ASC
+      LIMIT ? OFFSET ?`,
+      juzId,
+      limit,
+      offset
+    );
+
+    if (ayahs.length === 0) return null;
+
+    const juz = {
+      juz_no: juzId,
+      surah_count: new Set(ayahs.map(a => a.sura_no)).size,
+      first_surah_name: "Surah" // Simplified for now
+    };
+
+    const result = { juz, ayahs };
+    QuranService.cache.set(cacheKey, result);
+    return result;
+  }
+
+  /** Get ayahs by Page (Mushaf Page) 
+   * Note: This is a placeholder as the DB doesn't have explicit page mappings.
+   * We will simulate it for now.
+  */
+  async getPageWithAyahs(
+    pageId: number,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ page_no: number; ayahs: Ayah[] } | null> {
+    // For now, we'll return an empty list or mock data
+    // since the DB schema provided doesn't have a 'page' column.
+    return { page_no: pageId, ayahs: [] };
+  }
+
   /** Get a single ayah */
   async getAyah(surahId: number, ayahNumber: number): Promise<Ayah | undefined> {
     const db = getDB();

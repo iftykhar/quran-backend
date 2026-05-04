@@ -97,6 +97,49 @@ export class QuranController {
       next(err);
     }
   }
+
+  /** GET /api/v1/quran/juz/:id */
+  async getJuz(req: Request, res: Response, next: NextFunction) {
+    try {
+      const juzId = parseInt(req.params.id, 10);
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 20;
+
+      if (isNaN(juzId) || juzId < 1 || juzId > 30) {
+        res.status(400).json({ success: false, message: 'Invalid Juz ID. Must be 1-30.' });
+        return;
+      }
+
+      const data = await quranService.getJuzWithAyahs(juzId, page, limit);
+      if (!data) {
+        res.status(404).json({ success: false, message: 'Juz not found.' });
+        return;
+      }
+
+      res.json({ success: true, data, page, limit });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** GET /api/v1/quran/page/:id */
+  async getPage(req: Request, res: Response, next: NextFunction) {
+    try {
+      const pageId = parseInt(req.params.id, 10);
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 20;
+
+      if (isNaN(pageId) || pageId < 1 || pageId > 604) {
+        res.status(400).json({ success: false, message: 'Invalid Page ID. Must be 1-604.' });
+        return;
+      }
+
+      const data = await quranService.getPageWithAyahs(pageId, page, limit);
+      res.json({ success: true, data, page, limit });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const quranController = new QuranController();
