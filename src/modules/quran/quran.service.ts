@@ -25,8 +25,8 @@ export class QuranService {
     // 2. Fetch ayahs with joined translations
     const ayahs = await db.all<Ayah[]>(
       `SELECT
-        ar.SuraIDAr   AS surah_id,
-        ar.VerseIDAr  AS ayah_number,
+        ar.SuraIDAr   AS sura_no,
+        ar.VerseIDAr  AS ayah_no,
         ar.AyahTextAr AS arabic_text,
         en.text       AS english_text,
         bn.text       AS bengali_text,
@@ -48,8 +48,8 @@ export class QuranService {
     const db = getDB();
     return db.get<Ayah>(
       `SELECT
-        ar.SuraIDAr   AS surah_id,
-        ar.VerseIDAr  AS ayah_number,
+        ar.SuraIDAr   AS sura_no,
+        ar.VerseIDAr  AS ayah_no,
         ar.AyahTextAr AS arabic_text,
         en.text       AS english_text,
         bn.text       AS bengali_text,

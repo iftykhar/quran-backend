@@ -10,8 +10,8 @@ export interface Surah {
 }
 
 export interface Ayah {
-  surah_id: number;
-  ayah_number: number;
+  sura_no: number;
+  ayah_no: number;
   arabic_text: string;
   english_text: string | null;
   bengali_text: string | null;

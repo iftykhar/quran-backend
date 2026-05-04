@@ -23,10 +23,20 @@ function convertCreateTable(stmt: string): string {
 }
 
 /**
+ * Decode HTML entities (Numeric Character References) like &#2438; to UTF-8 characters.
+ */
+function decodeEntities(str: string): string {
+  return str.replace(/&#(\d+);/g, (_, dec) => {
+    return String.fromCharCode(parseInt(dec, 10));
+  });
+}
+
+/**
  * Convert a MySQL INSERT statement to SQLite-compatible SQL.
  */
 function convertInsert(stmt: string): string {
-  return stmt
+  const decoded = decodeEntities(stmt);
+  return decoded
     .replace(/\\'/g, "''")   // MySQL escaped single quotes -> SQLite style
     .replace(/\\"/g, '"')    // MySQL escaped double quotes
     .replace(/\\r/g, '\r')
