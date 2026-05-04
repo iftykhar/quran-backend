@@ -60,7 +60,7 @@ export class QuranService {
     surahId: number, 
     page: number = 1, 
     limit: number = 20
-  ): Promise<{ surah: Surah; ayahs: Ayah[] } | null> {
+  ): Promise<{ surah: Surah; ayahs: Ayah[]; bismillah?: Ayah | null } | null> {
     const cacheKey = `surah_${surahId}_p${page}_l${limit}`;
     if (QuranService.cache.has(cacheKey)) {
       return QuranService.cache.get(cacheKey);
@@ -85,8 +85,10 @@ export class QuranService {
     if (!surah) return null;
 
     // 2. Fetch ayahs with joined translations (paginated)
-    const offset = (page - 1) * limit;
-    const ayahs = await db.all<Ayah[]>(
+    const offset = (page === 1) ? 0 : (page - 1) * limit;
+    const fetchLimit = limit;
+
+    let ayahs = await db.all<Ayah[]>(
       `SELECT
         ar.SuraIDAr   AS sura_no,
         ar.VerseIDAr  AS ayah_no,
@@ -98,15 +100,53 @@ export class QuranService {
       LEFT JOIN en_yusufali en ON en.sura = ar.SuraIDAr AND en.aya = ar.VerseIDAr
       LEFT JOIN bn_bengali  bn ON bn.sura = ar.SuraIDAr AND bn.aya = ar.VerseIDAr
       LEFT JOIN audio       au ON au.sura_no = ar.SuraIDAr
-      WHERE ar.SuraIDAr = ?
+      WHERE ar.SuraIDAr = ? AND ar.VerseIDAr > 0
       ORDER BY ar.VerseIDAr ASC
       LIMIT ? OFFSET ?`,
       surahId,
-      limit,
+      fetchLimit,
       offset
     );
 
-    const result = { surah, ayahs };
+    // 3. Handle Bismillah (Ayah 0) for the first page
+    let bismillah: Ayah | null | undefined = null;
+    if (page === 1 && surahId !== 9) {
+      bismillah = await db.get<Ayah>(
+        `SELECT
+          ar.SuraIDAr   AS sura_no,
+          ar.VerseIDAr  AS ayah_no,
+          ar.AyahTextAr AS arabic_text,
+          en.text       AS english_text,
+          bn.text       AS bengali_text,
+          au.audio      AS audio_url
+        FROM quranar ar
+        LEFT JOIN en_yusufali en ON en.sura = ar.SuraIDAr AND en.aya = ar.VerseIDAr
+        LEFT JOIN bn_bengali  bn ON bn.sura = ar.SuraIDAr AND bn.aya = ar.VerseIDAr
+        LEFT JOIN audio       au ON au.sura_no = ar.SuraIDAr
+        WHERE ar.SuraIDAr = ? AND ar.VerseIDAr = 0`,
+        surahId
+      );
+
+      // Fallback to Fatiha's Bismillah if missing
+      if (!bismillah && surahId !== 1) {
+        bismillah = await db.get<Ayah>(
+          `SELECT
+            ar.SuraIDAr   AS sura_no,
+            ar.VerseIDAr  AS ayah_no,
+            ar.AyahTextAr AS arabic_text,
+            en.text       AS english_text,
+            bn.text       AS bengali_text,
+            au.audio      AS audio_url
+          FROM quranar ar
+          LEFT JOIN en_yusufali en ON en.sura = ar.SuraIDAr AND en.aya = ar.VerseIDAr
+          LEFT JOIN bn_bengali  bn ON bn.sura = ar.SuraIDAr AND bn.aya = ar.VerseIDAr
+          LEFT JOIN audio       au ON au.sura_no = ar.SuraIDAr
+          WHERE ar.SuraIDAr = 1 AND ar.VerseIDAr = 1`
+        );
+      }
+    }
+
+    const result = { surah, ayahs, bismillah };
     QuranService.cache.set(cacheKey, result);
     return result;
   }
