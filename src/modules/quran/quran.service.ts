@@ -1,5 +1,5 @@
 import { getDB } from '../../lib/db';
-import { Surah, Ayah, SurahDetail, SearchResult } from './quran.types';
+import { Surah, Ayah, SurahDetail, SearchResult, Juz } from './quran.types';
 
 export class QuranService {
   private static cache = new Map<string, any>();
@@ -18,6 +18,33 @@ export class QuranService {
     
     QuranService.cache.set(cacheKey, surahs);
     return surahs;
+  }
+
+  /** Get all 30 Juz with surah counts */
+  async getJuzList(): Promise<Juz[]> {
+    const cacheKey = 'juz_list';
+    if (QuranService.cache.has(cacheKey)) {
+      return QuranService.cache.get(cacheKey);
+    }
+
+    const surahs = await this.getAllSurahs();
+    const juzMap = new Map<number, Juz>();
+
+    surahs.forEach((surah) => {
+      if (!juzMap.has(surah.para)) {
+        juzMap.set(surah.para, {
+          juz_no: surah.para,
+          surah_count: 0,
+          first_surah_name: surah.eng_name,
+        });
+      }
+      const juz = juzMap.get(surah.para)!;
+      juz.surah_count++;
+    });
+
+    const result = Array.from(juzMap.values()).sort((a, b) => a.juz_no - b.juz_no);
+    QuranService.cache.set(cacheKey, result);
+    return result;
   }
 
   /** Get a single surah with paginated ayahs */

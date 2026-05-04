@@ -22,6 +22,16 @@ export interface SurahDetail extends Surah {
   ayahs: Ayah[];
 }
 
+export interface Juz {
+  juz_no: number;
+  surah_count: number;
+  first_surah_name: string;
+}
+
+export interface JuzDetail extends Juz {
+  surahs: Surah[];
+}
+
 export interface SearchResult {
   surah_id: number;
   surah_name: string;

@@ -17,6 +17,20 @@ export class QuranController {
     }
   }
 
+  /** GET /api/v1/quran/juz */
+  async getAllJuz(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const juz = await quranService.getJuzList();
+      res.json({
+        success: true,
+        count: juz.length,
+        data: juz,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   /** GET /api/v1/quran/surah/:id */
   async getSurah(req: Request, res: Response, next: NextFunction) {
     try {
