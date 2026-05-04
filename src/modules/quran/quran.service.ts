@@ -1,5 +1,6 @@
 import { getDB } from '../../lib/db';
 import { Surah, Ayah, SurahDetail, SearchResult, Juz } from './quran.types';
+import { SURAH_METADATA } from './quran.metadata';
 
 export class QuranService {
   private static cache = new Map<string, any>();
@@ -16,8 +17,14 @@ export class QuranService {
       'SELECT sura_no, sura_name, para, meaning, total_ayat, total_ruku, eng_name, hindi FROM sura ORDER BY sura_no ASC'
     );
     
-    QuranService.cache.set(cacheKey, surahs);
-    return surahs;
+    // Enrich with metadata
+    const enrichedSurahs = surahs.map(s => ({
+      ...s,
+      revelation_place: SURAH_METADATA[s.sura_no]?.revelation_place || 'Makkah'
+    }));
+
+    QuranService.cache.set(cacheKey, enrichedSurahs);
+    return enrichedSurahs;
   }
 
   /** Get all 30 Juz with surah counts */
@@ -52,7 +59,7 @@ export class QuranService {
     surahId: number, 
     page: number = 1, 
     limit: number = 20
-  ): Promise<SurahDetail | null> {
+  ): Promise<{ surah: Surah; ayahs: Ayah[] } | null> {
     const cacheKey = `surah_${surahId}_p${page}_l${limit}`;
     if (QuranService.cache.has(cacheKey)) {
       return QuranService.cache.get(cacheKey);
@@ -68,7 +75,10 @@ export class QuranService {
         'SELECT * FROM sura WHERE sura_no = ?',
         surahId
       );
-      if (surah) QuranService.cache.set(surahCacheKey, surah);
+      if (surah) {
+        surah.revelation_place = SURAH_METADATA[surah.sura_no]?.revelation_place || 'Makkah';
+        QuranService.cache.set(surahCacheKey, surah);
+      }
     }
     
     if (!surah) return null;
@@ -95,7 +105,7 @@ export class QuranService {
       offset
     );
 
-    const result = { ...surah, ayahs };
+    const result = { surah, ayahs };
     QuranService.cache.set(cacheKey, result);
     return result;
   }

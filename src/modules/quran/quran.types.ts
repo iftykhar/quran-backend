@@ -7,6 +7,7 @@ export interface Surah {
   total_ruku: number;
   eng_name: string;        // English transliteration
   hindi: string;
+  revelation_place?: string;
 }
 
 export interface Ayah {
