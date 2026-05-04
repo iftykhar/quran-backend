@@ -14,8 +14,6 @@ export const connectDB = async () => {
     driver: sqlite3.Database,
   });
 
-  console.log(`Connected to SQLite database at ${dbPath}`);
-
   // Optimization PRAGMAs
   await db.run('PRAGMA journal_mode = WAL;');
   await db.run('PRAGMA synchronous = NORMAL;');
