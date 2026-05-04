@@ -5,6 +5,7 @@ const quranRouter = Router();
 
 quranRouter.get('/surahs', quranController.getAllSurahs);
 quranRouter.get('/juz', quranController.getAllJuz);
+quranRouter.get('/pages', quranController.getPageList);
 quranRouter.get('/surah/:id', quranController.getSurah);
 quranRouter.get('/juz/:id', quranController.getJuz);
 quranRouter.get('/page/:id', quranController.getPage);

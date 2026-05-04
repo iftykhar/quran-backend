@@ -1,6 +1,7 @@
 import { getDB } from '../../lib/db';
 import { Surah, Ayah, SurahDetail, SearchResult, Juz } from './quran.types';
 import { SURAH_METADATA } from './quran.metadata';
+import { PAGE_MAP, TOTAL_PAGES } from './page-metadata';
 
 export class QuranService {
   private static cache = new Map<string, any>();
@@ -159,18 +160,55 @@ export class QuranService {
     return result;
   }
 
-  /** Get ayahs by Page (Mushaf Page) 
-   * Note: This is a placeholder as the DB doesn't have explicit page mappings.
-   * We will simulate it for now.
-  */
+  /** Get ayahs by Mushaf Page using PAGE_MAP */
   async getPageWithAyahs(
     pageId: number,
-    page: number = 1,
-    limit: number = 20
-  ): Promise<{ page_no: number; ayahs: Ayah[] } | null> {
-    // For now, we'll return an empty list or mock data
-    // since the DB schema provided doesn't have a 'page' column.
-    return { page_no: pageId, ayahs: [] };
+    _page: number = 1,
+    _limit: number = 200
+  ): Promise<{ page_no: number; surahs: { sura_no: number; name: string; eng_name: string }[]; ayahs: Ayah[] } | null> {
+    const cacheKey = `page_${pageId}`;
+    if (QuranService.cache.has(cacheKey)) {
+      return QuranService.cache.get(cacheKey);
+    }
+
+    const mappings = PAGE_MAP[pageId];
+    if (!mappings || mappings.length === 0) return null;
+
+    const db = getDB();
+
+    // Build WHERE clause from page mapping
+    const conditions = mappings.map(
+      m => `(ar.SuraIDAr = ${m.sura} AND ar.VerseIDAr BETWEEN ${m.startAyah} AND ${m.endAyah})`
+    ).join(' OR ');
+
+    const ayahs = await db.all<Ayah[]>(
+      `SELECT
+        ar.SuraIDAr   AS sura_no,
+        ar.VerseIDAr  AS ayah_no,
+        ar.AyahTextAr AS arabic_text,
+        en.text       AS english_text,
+        bn.text       AS bengali_text,
+        au.audio      AS audio_url
+      FROM quranar ar
+      LEFT JOIN en_yusufali en ON en.sura = ar.SuraIDAr AND en.aya = ar.VerseIDAr
+      LEFT JOIN bn_bengali  bn ON bn.sura = ar.SuraIDAr AND bn.aya = ar.VerseIDAr
+      LEFT JOIN audio       au ON au.sura_no = ar.SuraIDAr
+      WHERE ${conditions}
+      ORDER BY ar.SuraIDAr ASC, ar.VerseIDAr ASC`
+    );
+
+    // Get surah metadata for each surah on this page
+    const surahNos = [...new Set(mappings.map(m => m.sura))];
+    const surahMeta = await Promise.all(
+      surahNos.map(async sNo => {
+        const s = await db.get<Surah>('SELECT sura_no, sura_name, eng_name FROM sura WHERE sura_no = ?', sNo);
+        return s ? { sura_no: s.sura_no, name: s.sura_name, eng_name: s.eng_name } : { sura_no: sNo, name: '', eng_name: '' };
+      })
+    );
+
+    const result = { page_no: pageId, surahs: surahMeta, ayahs };
+    QuranService.cache.set(cacheKey, result);
+    return result;
   }
 
   /** Get a single ayah */
@@ -298,6 +336,28 @@ export class QuranService {
     }
 
     return results;
+  }
+
+  /** Get list of all 604 pages with surah metadata */
+  async getPageList(): Promise<{ page_no: number; surahs: string[] }[]> {
+    const cacheKey = 'page_list';
+    if (QuranService.cache.has(cacheKey)) {
+      return QuranService.cache.get(cacheKey);
+    }
+
+    const db = getDB();
+    const allSurahs = await this.getAllSurahs();
+    const surahMap = new Map(allSurahs.map(s => [s.sura_no, s.eng_name]));
+
+    const result = [];
+    for (let p = 1; p <= TOTAL_PAGES; p++) {
+      const mappings = PAGE_MAP[p] || [];
+      const surahNames = [...new Set(mappings.map(m => surahMap.get(m.sura) || `Surah ${m.sura}`))];
+      result.push({ page_no: p, surahs: surahNames });
+    }
+
+    QuranService.cache.set(cacheKey, result);
+    return result;
   }
 }
 

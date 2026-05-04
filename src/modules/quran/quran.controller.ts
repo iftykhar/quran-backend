@@ -135,7 +135,21 @@ export class QuranController {
       }
 
       const data = await quranService.getPageWithAyahs(pageId, page, limit);
+      if (!data) {
+        res.status(404).json({ success: false, message: 'Page not found.' });
+        return;
+      }
       res.json({ success: true, data, page, limit });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  /** GET /api/v1/quran/pages */
+  async getPageList(_req: Request, res: Response, next: NextFunction) {
+    try {
+      const pages = await quranService.getPageList();
+      res.json({ success: true, count: pages.length, data: pages });
     } catch (err) {
       next(err);
     }
