@@ -21,6 +21,10 @@ app.get("/", (_req, res) => {
   res.send("Hey there! Welcome to our API.");
 });
 
+app.get("/health", (_req, res) => {
+  res.status(200).json({ status: "OK", timestamp: new Date().toISOString() });
+});
+
 app.use(notFound);
 app.use(globalErrorHandler);
 

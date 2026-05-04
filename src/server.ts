@@ -13,6 +13,13 @@ async function main() {
 
     httpServer.listen(config.port, () => {
       logger.info(`Server running on port ${config.port}`);
+      
+      // Start keep-alive cron job
+      if (config.serverUrl) {
+        import("./utils/keepAlive").then(({ startKeepAlive }) => {
+          startKeepAlive(config.serverUrl as string);
+        });
+      }
     });
   } catch (error: any) {
     logger.error("Server failed to start:", error);
