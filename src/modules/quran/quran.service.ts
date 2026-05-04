@@ -237,6 +237,68 @@ export class QuranService {
 
     return [...englishResults, ...bengaliResults];
   }
+
+  /** Navigation search for Surahs, Juz, and Pages */
+  async searchNavigation(query: string): Promise<any[]> {
+    const db = getDB();
+    const q = query.toLowerCase().trim();
+    const results: any[] = [];
+
+    // 1. Search Surahs
+    const surahs = await this.getAllSurahs();
+    const matchedSurahs = surahs.filter(s => 
+      s.eng_name.toLowerCase().includes(q) || 
+      s.sura_no.toString() === q
+    ).slice(0, 5);
+
+    matchedSurahs.forEach(s => {
+      results.push({
+        type: 'surah',
+        id: s.sura_no,
+        title: s.eng_name,
+        subtitle: s.meaning,
+        arabic: s.sura_name
+      });
+    });
+
+    // 2. Search Juz
+    if (q.startsWith('juz') || q.startsWith('para')) {
+      const num = parseInt(q.replace(/\D/g, ''), 10);
+      if (num >= 1 && num <= 30) {
+        results.push({
+          type: 'juz',
+          id: num,
+          title: `Juz ${num}`,
+          subtitle: 'Quran Section'
+        });
+      }
+    } else {
+      const num = parseInt(q, 10);
+      if (num >= 1 && num <= 30) {
+        results.push({
+          type: 'juz',
+          id: num,
+          title: `Juz ${num}`,
+          subtitle: 'Quran Section'
+        });
+      }
+    }
+
+    // 3. Search Page
+    if (q.startsWith('page') || q.startsWith('pg')) {
+      const num = parseInt(q.replace(/\D/g, ''), 10);
+      if (num >= 1 && num <= 604) {
+        results.push({
+          type: 'page',
+          id: num,
+          title: `Page ${num}`,
+          subtitle: 'Mushaf Al-Madina'
+        });
+      }
+    }
+
+    return results;
+  }
 }
 
 export const quranService = new QuranService();

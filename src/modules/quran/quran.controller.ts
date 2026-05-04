@@ -140,6 +140,22 @@ export class QuranController {
       next(err);
     }
   }
+
+  /** GET /api/v1/quran/navigation?q=... */
+  async getNavigation(req: Request, res: Response, next: NextFunction) {
+    try {
+      const query = req.query.q as string;
+      if (!query) {
+        res.json({ success: true, data: [] });
+        return;
+      }
+
+      const results = await quranService.searchNavigation(query);
+      res.json({ success: true, data: results });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const quranController = new QuranController();

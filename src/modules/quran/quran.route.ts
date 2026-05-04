@@ -10,5 +10,6 @@ quranRouter.get('/juz/:id', quranController.getJuz);
 quranRouter.get('/page/:id', quranController.getPage);
 quranRouter.get('/surah/:surahId/ayah/:ayahNumber', quranController.getAyah);
 quranRouter.get('/search', quranController.search);
+quranRouter.get('/navigation', quranController.getNavigation);
 
 export default quranRouter;
