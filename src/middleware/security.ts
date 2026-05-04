@@ -25,7 +25,7 @@ export const loginLimiter = rateLimit({
 
 // CORS options
 const corsOptions = {
-  origin: ["http://localhost:3000", "http://localhost:3001"],
+  origin: ["http://localhost:3000", "http://localhost:3001", "https://quranmajid.vercel.app"],
   methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
   credentials: true,
 };
