@@ -21,18 +21,21 @@ export class QuranController {
   async getSurah(req: Request, res: Response, next: NextFunction) {
     try {
       const surahId = parseInt(req.params.id, 10);
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 20;
+
       if (isNaN(surahId) || surahId < 1 || surahId > 114) {
         res.status(400).json({ success: false, message: 'Invalid surah ID. Must be 1-114.' });
         return;
       }
 
-      const surah = await quranService.getSurahWithAyahs(surahId);
+      const surah = await quranService.getSurahWithAyahs(surahId, page, limit);
       if (!surah) {
         res.status(404).json({ success: false, message: 'Surah not found.' });
         return;
       }
 
-      res.json({ success: true, data: surah });
+      res.json({ success: true, data: surah, page, limit });
     } catch (err) {
       next(err);
     }

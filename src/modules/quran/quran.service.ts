@@ -2,27 +2,52 @@ import { getDB } from '../../lib/db';
 import { Surah, Ayah, SurahDetail, SearchResult } from './quran.types';
 
 export class QuranService {
+  private static cache = new Map<string, any>();
 
   /** Get all 114 surahs */
   async getAllSurahs(): Promise<Surah[]> {
+    const cacheKey = 'all_surahs';
+    if (QuranService.cache.has(cacheKey)) {
+      return QuranService.cache.get(cacheKey);
+    }
+
     const db = getDB();
-    return db.all<Surah[]>(
+    const surahs = await db.all<Surah[]>(
       'SELECT sura_no, sura_name, para, meaning, total_ayat, total_ruku, eng_name, hindi FROM sura ORDER BY sura_no ASC'
     );
+    
+    QuranService.cache.set(cacheKey, surahs);
+    return surahs;
   }
 
-  /** Get a single surah with all its ayahs (joined Arabic, English, Bengali, Audio) */
-  async getSurahWithAyahs(surahId: number): Promise<SurahDetail | null> {
+  /** Get a single surah with paginated ayahs */
+  async getSurahWithAyahs(
+    surahId: number, 
+    page: number = 1, 
+    limit: number = 20
+  ): Promise<SurahDetail | null> {
+    const cacheKey = `surah_${surahId}_p${page}_l${limit}`;
+    if (QuranService.cache.has(cacheKey)) {
+      return QuranService.cache.get(cacheKey);
+    }
+
     const db = getDB();
 
-    // 1. Fetch surah metadata
-    const surah = await db.get<Surah>(
-      'SELECT * FROM sura WHERE sura_no = ?',
-      surahId
-    );
+    // 1. Fetch surah metadata (cached separately as it rarely changes)
+    const surahCacheKey = `surah_meta_${surahId}`;
+    let surah = QuranService.cache.get(surahCacheKey);
+    if (!surah) {
+      surah = await db.get<Surah>(
+        'SELECT * FROM sura WHERE sura_no = ?',
+        surahId
+      );
+      if (surah) QuranService.cache.set(surahCacheKey, surah);
+    }
+    
     if (!surah) return null;
 
-    // 2. Fetch ayahs with joined translations
+    // 2. Fetch ayahs with joined translations (paginated)
+    const offset = (page - 1) * limit;
     const ayahs = await db.all<Ayah[]>(
       `SELECT
         ar.SuraIDAr   AS sura_no,
@@ -36,11 +61,16 @@ export class QuranService {
       LEFT JOIN bn_bengali  bn ON bn.sura = ar.SuraIDAr AND bn.aya = ar.VerseIDAr
       LEFT JOIN audio       au ON au.sura_no = ar.SuraIDAr
       WHERE ar.SuraIDAr = ?
-      ORDER BY ar.VerseIDAr ASC`,
-      surahId
+      ORDER BY ar.VerseIDAr ASC
+      LIMIT ? OFFSET ?`,
+      surahId,
+      limit,
+      offset
     );
 
-    return { ...surah, ayahs };
+    const result = { ...surah, ayahs };
+    QuranService.cache.set(cacheKey, result);
+    return result;
   }
 
   /** Get a single ayah */

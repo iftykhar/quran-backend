@@ -16,7 +16,10 @@ export const connectDB = async () => {
 
   console.log(`Connected to SQLite database at ${dbPath}`);
 
-  // Enable Foreign Keys for good measure
+  // Optimization PRAGMAs
+  await db.run('PRAGMA journal_mode = WAL;');
+  await db.run('PRAGMA synchronous = NORMAL;');
+  await db.run('PRAGMA cache_size = 10000;'); // 10MB cache
   await db.run('PRAGMA foreign_keys = ON;');
 
   return db;
