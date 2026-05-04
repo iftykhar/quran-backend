@@ -139,6 +139,44 @@ async function run() {
   `);
   console.log('Indexes created.');
 
+  // Restructure Bismillah (Ayah 0)
+  console.log('Restructuring Bismillah (Ayah 0)...');
+  
+  const bismillahAr = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+  const bismillahEn = 'In the name of Allah, the Entirely Merciful, the Especially Merciful.';
+  const bismillahBn = 'শুরু করছি আল্লাহর নামে যিনি পরম করুণাময়, অতি দয়ালু।';
+
+  try {
+    // 1. Insert Ayah 0 for Surahs 2-114 (excluding 9)
+    await db.exec(`
+      INSERT INTO quranar (SuraIDAr, VerseIDAr, AyahTextAr, DatabaseIDAr, IDAr)
+      SELECT sura_no, 0, '${bismillahAr}', 1, 100000 + sura_no
+      FROM sura
+      WHERE sura_no BETWEEN 2 AND 114 AND sura_no != 9;
+
+      INSERT INTO en_yusufali (sura, aya, text, id)
+      SELECT sura_no, 0, '${bismillahEn}', 200000 + sura_no
+      FROM sura
+      WHERE sura_no BETWEEN 2 AND 114 AND sura_no != 9;
+
+      INSERT INTO bn_bengali (sura, aya, text, id)
+      SELECT sura_no, 0, '${bismillahBn}', 300000 + sura_no
+      FROM sura
+      WHERE sura_no BETWEEN 2 AND 114 AND sura_no != 9;
+    `);
+
+    // 2. Strip Bismillah prefix from Arabic Verse 1 of Surahs 2-114
+    await db.exec(`
+      UPDATE quranar
+      SET AyahTextAr = TRIM(REPLACE(AyahTextAr, '${bismillahAr}', ''))
+      WHERE SuraIDAr BETWEEN 2 AND 114 AND VerseIDAr = 1 AND AyahTextAr LIKE '${bismillahAr}%';
+    `);
+
+    console.log('✓ Bismillah restructuring completed.');
+  } catch (e: any) {
+    console.error(`✗ Bismillah restructuring failed: ${e.message}`);
+  }
+
   await db.close();
   console.log('Done.');
 }
